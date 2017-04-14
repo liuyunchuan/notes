@@ -1,0 +1,67 @@
+在日常工作中需要经常使用sql语句。
+sql语句全称是结构化查询语言。（关系型数据库、非关系型数据库）
+	
+	sql语句分类 
+DDL 数据定义语言 CREATE 
+TPL 事务处理语言
+DCL 数据控制语言
+DML 数据操作语言 SELECT/INSERT/UPDATE/DELETE
+
+	正确使用SQL语句的重要性。
+增加数据库处理效率，减少应用响应时间。
+减少数据库服务器负载，增加服务器稳定性。
+减少服务器间通讯的网络流量。
+
+	如何正确使用join从句
+内连接 INNER
+全外连接 FULL OUTER
+左外连接 LEFT OUTER
+右外连接 RIGHT OUTER
+交叉连接 CROSS
+
+	内连接
+INNER JOIN 基于连接谓语将两张表的列结合在一起，产生新的结果表。
+SELECT <select_list>
+FROM TableA A
+INNER JOIN TableB B
+ON A.key = B.key
+
+	左外连接
+LEFT OUTER JOIN 以左表作为基础，包含左表所有记录
+SELECT <select_list>
+FROM TableA A
+LEFT JOIN TableB B
+ON A.Key = B.key
+
+SELECT <select_list>
+FROM TableA A
+LEFT JOIN TableB B
+ON A.key = B.key
+WHERE B.key IS NULL 
+
+	右外连接
+RIGHT OUTER JOIN 以右边为基础，包含右表所有记录
+
+	全外连接
+FULL OUTER 完整返回左表和右表的所有行，如果没有匹配行，以空值代替。 MySQL中不支持这样查询。
+解决方法：
+SELECT a.'user_name',a.'over',b.'over'
+FROM user1 a
+LEFT JOIN user2 b ON a.'user_name' = b.'user_name'
+UNION ALL 
+SELECT b.'user_name', b.'over',a.'over'
+FROM user1 a
+RIGHT JOIN user2 b ON a.'user_name' = b.'user_name'
+
+	交叉连接
+CROSS JOIN，又称笛卡尔连接，或者叉乘。
+
+
+	如何更新使用过滤条件中包括自身的表？
+
+
+
+	如何使用JOIN优化子查询？
+
+
+	如何使用JOIN优化聚合查询？
