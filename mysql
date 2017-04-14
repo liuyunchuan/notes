@@ -1,0 +1,148 @@
+----------------------------------------------------------------------------------------------
+
+	MySQL数据库
+MySQL是开源的关系型数据库管理系统(社区版、企业版)
+
+	启动/关闭MySQL服务
+net start mysql
+net stop mysql
+
+	MySQL登录
+-u username
+-p password
+-P 端口号
+-h 服务器名称
+	MySQL退出
+exit;quit;
+
+	MySQL常用命令
+显示当前服务器版本 SELECT VERSION()
+显示当前日期时间 SELECT NOW()
+显示当前用户 SELECT USER()
+
+	MySQL语句的规范
+关键字与函数名称全部大写
+数据库名称、表名称、字段名称全部小写
+SQL语句必须以分号结尾
+
+	创建数据库
+CREATE {DATABASE | SCHEMA} [IF NOT EXISTS] db_name [DEFAULT] CHARACTER SET [=] charset_name
+CREATE DATABASE IF NOT EXISTS t2 CHARCTER SET utf8;
+
+SHOW DATABASES;
+SHOW CREATE DATABASE db_name;
+
+	修改数据库编码
+ALTER {DATABASE | SCHEMA } [db_name] [DEFAULT] CHARACTER SET [=] charset_name;
+	
+	删除数据库
+DROP {DATABASE | SCHEMA } [IF EXISTS] db_name
+
+----------------------------------------------------------------------------------------------
+
+	数据类型
+整形 
+TINYINT   -128到127   0到255(2`8) 1
+SMALLINT  -32768      2`16        2
+MEDIUMINT -8388508    2`24        3
+INT		  -2147483648 2`32        4
+BIGINT                2`64        8
+
+浮点型
+FLOAT[(M,D)]	M是数字总位数，D是小数点后面面的位数。如果M和D被省略，根据硬件允许的限制来保存值。单精度浮点数精确到大约7位小数
+DOUBLE[(M,D)]   存储范围约是FLOAT的10倍。
+
+日期时间类型
+YEAR 		3
+TIME 		3
+DATE 		3
+DATETIME 	8
+TIMESTAMP  	4
+
+字符型
+CHAR(M)		(0, 255) M个字节
+VARCHAR(M) 	(0, 65525)	L+1字节，L <= M
+TINYTEXT	L+1字节 L < 2`8
+TEXT 		L+2字节 L < 2`16
+
+
+	数据表操作
+CREATE TABLE [IF NOT EXISTS] table_name(
+	column_name data_type,
+	......
+);
+//UNSIGNED 无符号
+CREATE TABLE tb1(
+	username VARCHAR(20),
+	age TINYINT UNSIGNED,
+	salary FLOAT(8,2) UNSIGNED
+);
+
+查看数据库中所有的表
+SHOW TABLES [FROM db_name] [LIKE 'patten' | WHERE expr];
+
+查看数据表的结构
+SHOW COLUMNS FROM tb_name;
+
+	INSERT 插入记录
+INSERT [INTO] tb_name [(col_name,...)] VALUES(val,...);
+
+	SELECT 查找记录
+SELECT expr,... FROM tb_name;
+
+	空值与非空
+NULL
+NOT NULL
+CREATE TABLE tb2(
+	username VARCHAR(20) NOT NULL
+);
+
+	AUTO_INCREMENT 自动编号
+CREATE TABLE tb3(
+	id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+);
+	
+	PRIMARY KEY 主键
+主键约束 
+每张数据表只能存在一个主键
+主键保证记录的唯一性
+主键自动为NOT NULL
+
+	UNIQUE KEY
+唯一约束
+唯一约束可以保证记录的唯一性
+唯一约束的字段可以为空值(NULL)
+每张数据表可以存在多个唯一约束
+
+	DEFAULT 默认约束
+CREATE TABLE tb5(
+	id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	sex SMALLINT DEFAULT '3'
+);
+
+
+----------------------------------------------------------------------------------------------
+
+	约束
+1、约束保证数据的完整性和一致性。
+2、约束分为表级约束和列级约束。
+3、约束类型包括：
+	NOT NULL	(非空约束)
+	PRIMARY KEY	(主键约束)
+	UNIQUE KEY	(唯一约束)
+	DEFALUTE	(默认约束)
+	FOREIGN KEY	(外键约束)
+
+	FOREIGN KEY
+保持数据一致性，完整性。
+实现一对一或一对多关系。
+外键约束的要求
+1、父表和字表必须使用相同的存储引擎，而且禁止使用临时表。
+2、数据表的存储引擎只能为InnoDB。
+3、外键列和参照列必须具有相似的数据类型。其中数字的长度或是否有符号位必须相同；而字符的长度则可以不同。
+4、外键列和参照列必须创建索引。如果外键不存在索引的话，MySQL将自动创建索引。
+
+	编辑数据表的默认存储引擎
+defaul-storage-engine = INNODB;
+观看视频至3-2
+
