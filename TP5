@@ -1,0 +1,77 @@
+快速入门基础：
+简介
+	ThinkPHP 是一个快速、简单的基于MVC和面向对象的轻量级的PHP开发框架，遵循Apache2 开源协议发布，自2006年诞生以来一直，
+秉承简介使用的设计原则，在保持出色的性能和置减代码的同时，尤其注重开发体验和易用性，并且拥有众多的原创功能和特性，为
+WEB应用和API开发提供了强有力的支持。
+
+安装
+	ThinkPHP提供多个方式的安装，包括官网下载、Composer 安装以及GIT下载。
+
+目录结构(composer)
+	application		应用目录
+	extend			扩展类库目录（可定义）
+	public 			网站对外访问目录
+	runtime			运行时目录（可定义）
+	vendor			第三方类库目录（composer）
+	thinkphp 		框架核心目录
+	build.php 		自动生成定义文件（参考）
+	composer.json	Composer定义文件
+	LICENSE.txt		授权说明文件
+	README.md		README 文件
+	think 			命令行工具入口
+
+	运行环境 
+		ThinkPHP5 的运行环境要求如下：
+		PHP>=5.4.0（完美支持PHP7）
+		PDO PHP Extension
+		MBstring PHP Extension
+		CIRL PHP Extension
+
+		我们进入命令行，进入tp5/public目录之后，输入如下命令：
+		php -S localhost:8888 router.php
+		如果提示错误，请检查你的php.exe 所在路径是否已经加入系统环境变量Path。
+		接下来可以直接访问
+		http://localhost:8888
+		注意：S一定要大写，端口号可以随意设置，只要和已有的不冲突，如果要停止服务，直接在命令行下面按CTRL+C即可推出。
+
+
+入口文件
+	ThinkPHP5.0 版本的默认自带的入口文件空位于public/index.php（实际部署的时候public目录为你的应用对外访问目录）
+	入口文件内容如下：
+		//定义应用目录
+		define('APP_PATH',__DIR__.'/../application/');
+		//加载框架引导文件
+		require __DIR__.'/../thinkphp/start.php';
+
+
+资源访问
+	网站的资源文件访问不会影响正常的操作访问，只有当访问的资源文件不存在的时候才会解析到入口文件，一般就会提示模块不存在的错误。
+	建议规范
+		static		静态资源文件
+		css			样式目录
+		js  		脚本目录
+		img			图像目录
+	记住，前往不要在目录之外的任何位置放置资源文件，包括 application目录。
+
+
+调试模式
+	ThinkPHP支持调试模式，默认情况下是开始状态。调试模式一除错方便优先，而且在异常的时候可以显示尽可能多的信息，所以对性能有一定
+的影响。
+	开发完成后，我们实际进行项目部署的时候，修改应用配置文件（application/config.php）中的app_debug配置参数：app_debug=>false。
+	为了安全考虑，避免泄露你的服务器WEB目录信息等资料，一定记得正式部署的时候关闭调试模式。
+
+
+控制器
+	根据类的命名空间可以快速定位文件位置，在ThinkPHP5.0 的规范里面，命名空间但其实对应了文件所在目录，app 命名空间通常代表了文件的
+起始目录为application，而 think 命名空间则代表了文件的起始目录为 thinkphp/library/think ，后面的命名空间则表示从起始目录开始的子目录。
+
+
+视图
+	现在我们在给控制器添加视图文件功能，我们在 application/index 目录下创建一个 view 目录，然后添加模板文件 view/index/hello.html（注意大小写）。
+
+
+读取数据
+	
+总结
+
+
