@@ -75,3 +75,113 @@ WEB应用和API开发提供了强有力的支持。
 总结
 
 
+
+
+URL和路由
+
+URL访问
+	ThinkPPH 采用单一入口模式访问应用，对应的所有请求都定向到应用的入口文件，系统会从 URL 参数中国解析当前请求的模块、
+控制器和操作，下面是一个标准的 URL 访问格式：http://domainName/index.php/模块/控制器/操作。
+	其中 index.php 就称之为应用的入口文件（注意入口文件可以被隐藏）。
+
+	模块在ThinkPHP中的概念其实就是应用目录下的子目录，而官方的规范是目录民小写，因此模块全部采用小写命名，无论URL是否开启大小写转换，
+模块名都会强制小写。
+
+	默认情况下，URL地址中的控制器和操作名时不区分大小写的。
+
+	如果控制器是驼峰的，例如定义一个HelloWorld控制器（application/index/controller/HelloWorld.php）。
+		正确的URL地址 http://tp5.com/index.php/index/hello_world/index。系统会自动定位到 HelloWorld 控制器类去操作。
+	
+	如果使用 http://tp5.com/index.php/index/HelloWorld/index 将会报错，并提示HelloWorld控制器类不存在。
+
+	如果希望严格区分大小写访问（这样就可以支持驼峰法进行控制器访问），可以在应用配置文件中设置：
+		//关闭URL自动转换（支持驼峰访问控制器）
+		'url_convert'=> false,
+
+	5.0 不再支持普通的URL访问方式，所以下面的访问时无效的，你会发现无论输入什么，访问的都是默认的控制器和操作。
+
+
+参数传入
+	通过操作方法的参数绑定功能，可以实现自动获取 URL 的参数。http://tp5.com/index.php/index/index/hello/name/thinkphp。
+		http://tp5.com/index.php/index/index/hello/city/shanghai/name/thinkphp 
+		或者 http://tp5.com/index.php/index/index/hello?city=shanghai&name=thinkphp 
+		还可以进一步对URL地址做简化，前提就是我们必须明确参数的顺序代表的变量，我们更改下 URL 参数的获取方式，把应用配置文件中的
+	url_param_type 参数的值修改如下：
+			//按照参数顺序获取
+			'url_param_type' => 1，
+		http://tp5.com/index.php/index/index/hello/thinkphp/shanghai
+
+		按照顺序绑定参数的话，操作方法的参数只能使用URL pathinfo变量，而不能使用 get 或者 post 变量。
+
+
+隐藏index.php
+
+	可以去掉URL地址里面的入口文件 index.php ，但需要额外配置WEB服务器的重写规则。
+	以 Apache 为例，需要在入口文件的同级添加 .htacess 文件（官方默认自带了该文件）
+		<IfModule mod_rewrite.c>
+		Options +FollowSymlinks -Multiviews
+		RewriteEngine on
+		RewriteConde %{REQUEST_FILENAME} !-d
+		RewriteConde %{REQUEST_FILENAME} !-f
+		RewriteRule ^(.*)$ index.php/$1 [QSA,PT,L]
+		</IfModule>
+
+
+定义路由
+
+	URL地址里面的index模块怎么才能省略呢，默认的URL地址显得有点长，下面就来说说如何通过路由简化URL访问。
+	我们在路由定义文件（application/route.php）里面添加一些路由规则：
+		return [
+			//添加路由规则 路由到 index 控制器的hello操作方法
+			'hello/[:name]' => 'index/index/hello',
+		]
+	该路由规则表示所有的hello开头的并且带参数的访问都会路由到 index 控制器的 hello 操作方法。
+	路由之前的 URL 访问地址为： http://tp5.com/index/index/hello/name/thinkphp
+	定义路由之后juice只能访问如下 URL 地址 http://tp5.com/hello/thinkphp
+	注意：定义路由规则后，原来的URL地址将会失效，变成非法请求。
+
+	当 name 参数没有传入值的时候， hello 方法的 name 参数有默认值 World ，所以输出的内容为 Hello，World。
+
+
+	除了路由配置文件中定义之外，H还可以采用动态定义路由规则的方式定义，例如在路由配置文件的开头直接添加：
+		use think\Route;
+		Route:rule('hello/:name','inedx/hello');
+
+	注意路由配置不支持在模块配置文件中设置。
+
+
+	完整匹配
+
+	前面定义的路由只能以 hello 开头就能进行匹配，如果需要完整匹配，可以使用下面的定义：
+		return [
+			//路由参数 name 为可选
+			'hello/[:name]$' => 'index/hello',
+		];
+
+	当路由规则以 $ 结尾的时候就表示当前路由规则需要完整匹配。
+	http://tp5.com/hello // 正确匹配
+	http://tp5.com/hello/thinkphp // 正确匹配
+ 	http://tp5.com/hello/thinkphp/val/value // 不会匹配
+
+
+ 	设置 URL 分隔符
+ 	
+ 		如果需要改变 URL 地址中的pathifo 参数分隔符，只需要在应用配置文件（application/config.php）中设置：
+ 			// 设置 pathinfo 分隔符
+ 			'pathinfo_depr' => '_',
+
+ 		路由规则定义无需做任何改变，我们就可以访问下面的额地址：http://tp5.com/hello-thinkphp
+
+
+
+路由参数
+	我们还可以约束路由规则的请求类型或者URL后缀之类的条件
+		return [
+			// 定义路由的请求类型和后缀
+			'hello/[:name]' =>['index/hello',['method' => 'get','ext' => 'html']],
+		];
+	上面定义的路由规则限制了必须是 get 请求，而且后缀必须是 html 的，所以下面的访问地址：
+	http://tp5.com // 无效
+	http://tp5.com/hell.html // 无效
+	http://tp5.com/hello/thinkphp // 无效
+	http://tp5.com/hello/thinkphp.html // 有效
