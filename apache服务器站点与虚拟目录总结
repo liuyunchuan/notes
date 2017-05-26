@@ -1,0 +1,129 @@
+########################################################################################################
+Linux系统环境
+
+一、单站点配置：
+	在Apache中，配置一个站点是最基础的配置，在这里我只要配置一个最基础的WEB站点，因此配置此方式也是非常简单。
+
+	侦听端口
+	Listen 80
+
+	站点文件主目录
+	ServerName www.server110.cn
+
+	站点文件主目录
+	DocumentRoot /data/www/server110
+
+	该站点限制
+	<Directory />
+		AllowOverride None
+		Order deny,allow
+		Deny from all
+		Satisfy all
+	</Directory>
+
+
+二、单站点虚拟目录配置：
+	对于不同的DocumentRoot指定的不同页面，我们可以通过别名的方式来实现。
+
+	#############主站点配置###################
+	侦听端口
+	Listen 80
+
+	站点文件主目录
+	ServerName www.server110.cn
+
+	站点文件主目录
+	DocumentRoot /data/www/server110
+
+	该站点限制
+	<Directory />
+		AllowOverride None
+		Order deny,allow
+		Deny from all
+		Satisfy all
+	</Directory>
+
+	###########别名（虚拟目录）配置############
+	alias /alias1//data/www/alias1
+
+		alias/alias2//data/www/alias2
+
+
+
+三、多站点配置：
+	一台Apache服务器如果跑的小网站，不可能只跑一个站，可能需要在这台服务器上配置很多站点，
+	实现配置方式也是比较简单的。
+
+	########多站点配置1（这种方式适用于一台服务器只有一个IP地址，多域名同时解析到这该IP地址，并且只侦听一个80端口）#######
+
+	NameVirtualHost 192.168.1.1
+	
+	#定义主机1
+	<VirualHost 192.168.1.1>
+		DocumentRoot /data/www/server1101
+		ServerName www.server1101.cn
+	</VirualHost>
+
+	#定义主机2
+	<VirualHost 192.168.1.1>
+		DocumentRoot /data/www/server1102
+		ServerName www.server1102.cn
+	</VirualHost>
+
+	#定义主机3
+	<VirualHost 192.168.1.1>
+		DocumentRoot /data/www/server1103
+		ServerName www.server1103.cn
+	</VirualHost>
+
+
+	#######多站点配置2（这种方式适用于一台配置多个IP，多域名不同的解析到不同IP）##############################
+
+	#定义主机1（改域名必须解析到IP1）
+	DocumentRoot /data/www/server1101
+	ServerName www.server1101.cn
+
+	#定义主机2（改域名必须解析到IP2）
+	DocumentRoot /data/www/server1102
+	ServerName www.server1102.cn
+
+	#定义主机3（改域名必须解析到IP3）
+	DocumentRoot /data/www/server1103
+	ServerName www.server1103.cn
+
+四、多站点虚拟目录配置
+
+	由于配置多站点的方式两种，单IP多域名的方式进行配置
+
+	NameVirtualHost 192.168.1.1
+
+	#定义主机1（改域名必须解析到IP1）
+	DocumentRoot /data/www/server1101
+	ServerName www.server1101.cn
+
+	#定义主机2（改域名必须解析到IP2）
+	DocumentRoot /data/www/server1102
+	ServerName www.server1102.cn
+
+	#定义主机3（改域名必须解析到IP3）
+	DocumentRoot /data/www/server1103
+	ServerName www.server1103.cn
+
+
+
+####################################################################################
+
+Windows系统环境
+
+一、基于名称的虚拟主机
+
+	打开Apache2 conf下的httd.conf，查找#NameVirtualHost*:80，去掉前面注释。
+	添加虚拟主机www.server110.com，在httpd.conf的最后，添加如下代码：
+	<VirtualHost *:80>
+		ServerName www.server1110.com #主机名
+		ServerAlias server110.com *.server110.com #别名
+		DocumentRoot ":d:/server110"     #所在目录
+	</VirtualHost>
+
+二、增加虚拟目录
+1、全局的
