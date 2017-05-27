@@ -1,0 +1,491 @@
+###########################################################################################
+请求和响应
+	了解如何获取当前的请求信息，已经进行不同的输出响应、跳转和页面重定向
+
+	请求对象
+		传统的方式调用
+		继承think\Controller
+		自动注入请求对象
+		动态绑定属性
+		使用助手函数
+
+	请求信息
+		获取请求变量
+		获取请求参数
+		获取URL信息
+		获取当前模块/控制器/操作信息
+		获取路由和调度信息
+
+	响应对象
+		自动输出
+		手动输出
+		页面跳转
+		页面重定向
+
+
+	ThinkPHP5 的架构设计和之前版本的主要区别之一就在于增加了 Request 请求对象和 Response 响应对象，了解了这两个
+对象的作用和用法对于应用开发非常关键。
+
+	请求对象
+		Request 对象的作用是与客户端交互，收集客户端的Form、Cookies、超链接，。或者收集服务器端的环境变量。
+
+		Request 对象是从客户端向服务端发出请求，包括用户提交的信息以及客户端的一些信息。客户端可通过HTML表单或在
+	网页地址后面提供数据，然后通过 Request 对象的相关方法来获取这些数据。Request 的各种方法主要用来处理客户端浏览器
+	提交的请求中各项参数和选项。
+
+		ThinkPHP 的 Request 对象有 think\Request 类完成。
+
+		Request 对象的一个主要职责是统一和更安全获取当前的请求信息，你需要避免直接操作 $_GET 、$_POST、$_REQUEST、
+		$_SESSION、$_COOKIE、甚至$_FILES等全局变量，而是统一使用 Request 对象提供的方法来获取请求变量。
+
+		传统方式调用（实际开发中很少使用）
+		<?php
+		namespace app\index\controller;
+
+		use think\Request;
+
+		class Index
+		{
+			public function hello($name = 'World')
+			{
+				$request = Request::instance();
+				//获取当前URL地址 不含域名
+				echo 'url：' . $request->url() .'<br/>';
+				return 'Hello,' . $name . '!';
+			}
+		}
+
+		继承think\Controller
+		<?php
+		namespace app\index\controller;
+
+		use think\Controller;
+
+		class Index extends Controller
+		{
+			public function hello($name = 'World')
+			{
+				//获取当前URL地址 不含域名
+				echo 'url：' . $this->request->url() .'<br/>';
+				return 'Hello,' . $name . '!';
+			}
+		}
+
+		自动注入请求对象
+		如果没有继承think\Controller，则可以使用功能 Request 对象注入的方式来简化调用，任何情况下都使用，也是系统建议的方式：
+		<?php
+		namespace app\index\controller;
+
+		use think\Request;
+
+		class Index
+		{
+			public function hello(Request $request, $name = 'World')
+			{
+				//获取当前URL地址 不含域名
+				echo 'url：' . $request->url() . '<br/>';
+				return 'hello,' . $name . '!';
+			}
+		}
+		提示：hello 方法的 request 参数是系统自动出入的，而不需要通过URL请求传入。
+
+		动态绑定属性
+		可以给 Request 请求对象绑定属性，方便全局调用，例如我们可以在公共控制器中绑定当前登录的用户模型到请求对象：
+		<?php
+		namespace app\index\controller;
+
+		use app\index\model\User;
+		use think\Controller;
+		use think\Request;
+		use think\Session;
+
+		class Base extends Controller
+		{
+			public function _initialize()
+			{
+				$user = User::get(Session::get('user_id'));
+				Request::instance()->bind('user',$user);
+			}
+		}
+		然后，直接继承这个控制器类后就可以直接使用。
+		<?php
+		namespace app\index\controller;
+
+		use app\index\controller\Base;
+		use think\Request;
+
+		class Index extends Base
+		{
+			public function index(Request $request)
+			{
+				echo $request->user->id;
+				echo $request->user->name;
+			}
+		}
+
+		使用助手函数
+		如果既没有继承think\controller 也不想给操作方法添加二外的 Request 对象参数，那么也可以视同系统提供的助手：
+		 <?php
+		 namespace app\index\controller;
+
+		 class Index
+		 {
+		 	public function hello($name = 'World')
+		 	{
+		 		//获取当前URL地址 不含域名
+		 		echo 'url：' . requeset()->url() . '<br/>';
+		 		return 'Hello,' . $name .'!';
+		 	}
+		 }
+
+
+#######################################################################################################################
+
+请求信息
+
+	获取请求变量
+
+	系统推荐使用 param 方法统一获取当前请求变量，该方法最大的优势是让你不需要区分当前请求类型而使用不同的全局变量或方法，
+	并且可以满足大部分的参数需求。
+
+	<?php 
+	namespace app\index\controller;
+
+	use think\Request;
+
+	class Index
+	{
+		public function hello(Request $request)
+		{
+			echo '请求参数：';
+			dump($requset->param());
+			echo 'name:' . $request->param('name');
+		}
+	}
+	访问URL：tp5.com/index/index/hello.html?test=ddd&name=thinkphp
+	页面输出结果：
+
+	请求参数：
+	array (size=2)
+		'test' => string 'ddd' (length=3)
+		'name' => string 'thinkphp' (length=8)
+	name:thinkphp
+
+	系统提供一个input助手函数来简化 Request 对象的 param 方法：
+	<?php
+	namespace app\index\controller;
+
+	class Index
+	{
+		public function hello()
+		{
+			echo '请求参数：';
+			dump(input());
+			echo 'name:' . input('name');
+		}
+	}
+	param 方法获取的参数会自动判断当前的请求，以 POST 请求为例的话，参数的优先级别为：
+	路由变量 > 当前请求变量（$_POST变量） > $_GET变量
+
+	注意：这里的路由变量指的是路由规则里面的定义的变量或者 PATH_INFO 地址中的变量。路由变量无法使用 get 方法或者 $_GET 变量获取。
+
+	param 方法支持变量的过滤和默认值
+	<?php
+	namespace app\index\controller;
+
+	use think\Request;
+
+	class Index
+	{
+		public function hello(Request $request)
+		{
+			echo 'name:'.$request->param('name','World','strrolower');
+		}
+	}
+
+	可以设置全局的过滤方法
+		// 设置默认的全局过滤规则 多个用数组或者逗号分隔
+		'default_filter' => 'htmlspecialchars ',
+
+	除了 Param 方法之外，Request 对象也可以用于获取其它的输入参数。
+	<?php
+	namespace app\index\controller;
+
+	use think\Request;
+
+	class Index
+	{
+		public fuction hello(Request $request)
+		{
+			dump($request->get());
+			dump($request->get('name'));
+			dump($request->post('name'));
+			dump($request->cookie('name'));
+			dump($request->file('image'));
+		}
+	}
+	使用助手函数：
+	<?php
+	namespace app\index\controller;
+
+	class Index
+	{
+		public function hello()
+		{
+			dump(input('get.'));
+			dump(input('get.name'));
+			dump(input('post.name'));
+			dump(input('cookie.name'));
+			dump(input('file.image'));
+		}
+	}
+
+
+	获取请求参数
+	<?php
+	namespace app\index\controller;
+
+	use think\Request;
+
+	class Index
+	{
+		public function hello(Request $request)
+		{
+			echo '请求方法：' . $request->method() . '<br/>';
+	        echo '资源类型：' . $request->type() . '<br/>';
+	        echo '访问IP：' . $request->ip() . '<br/>';
+	        echo '是否AJax请求：' . var_export($request->isAjax(), true) . '<br/>';
+	        echo '请求参数：';
+	        dump($request->param());
+	        echo '请求参数：仅包含name';
+	        dump($request->only(['name']));
+	        echo '请求参数：排除name';
+	        dump($request->except(['name']));
+		}
+	}
+
+	获取URL信息
+	<?php 
+	namespace app\index\controller;
+
+	use think\Request;
+
+	class Index
+	{
+		public function hello(Request $request,$name = 'World')
+		{
+			//获取当前域名
+			echo 'domain: ' . $request->domain() . '<br/>';
+			//获取当前入口文件
+			echo 'file: ' . $request->baseFile() . '<br/>';
+			//获取当前URL地址 不含域名
+			echo 'url: ' . $request->url() . '<br/>';			
+			//获取包含域名的完整URL地址
+			echo 'url with domain: ' . $request->url(true) . '<br/>';			
+			//获取URL地址 不含QUERY_STRING
+			echo 'rul without query: ' . $request->baseUrl() . '<br/>';			
+			//获取URL访问的ROOT地址
+			echo 'root: ' . $request->root() . '<br/>';
+			//获取URL访问的ROOT地址
+			echo 'root with domain: ' . $request->root(true) . '<br/>';			
+			// 获取URL地址中的PATH_INFO信息
+	        echo 'pathinfo: ' . $request->pathinfo() . '<br/>';
+	        // 获取URL地址中的PATH_INFO信息 不含后缀
+	        echo 'pathinfo: ' . $request->path() . '<br/>';
+	        // 获取URL地址中的后缀信息
+	        echo 'ext: ' . $request->ext() . '<br/>';
+
+	        return 'Hello,' . $name . '！';			
+		}
+	}
+
+	获取当前模块/控制器/操作信息
+	public function hello(Request $request, $name = 'World')
+	{
+		echo '模块：' . $request->module();
+		echo '控制器：' . $request->controller();
+		echo '操作：' . $request->action();
+	}
+
+	controller 方法获取的是驼峰命名的实际的控制器名，其他都是小写放回。
+
+
+	获取路由调度信息
+	<?php
+	namespace app\index\controller;
+
+	use think\Request;
+
+	class Index
+	{
+		public function hello(Request $request, $name = 'World')
+		{
+			echo '路由信息：';
+	        dump($request->routeInfo());
+	        echo '调度信息：';
+	        dump($request->dispatch());
+
+	        return 'Hello,' . $name . '！';		
+		}
+	}
+
+
+##################################################################################################
+
+响应对象
+	Response 对象用于动态响应客户端请示，控制发送给用户信息，并将动态生成响应。通常用户输出数据给客户端或者浏览器。
+
+	ThinkPHP5 的 Response 响应对象有 think\Response 类或子类完成。
+
+	自动输出
+		大多数情况，我们不需要关注 Response 对象本身，只需要在控制器的操作方法志鸿返回数据即可，系统会根据
+		default_return_type 和 default_ajax_return 配置决定响应输出的类型。
+
+		默认的自动响应输出会自动判断时候 AJAX 请求，如果是的话会自动输出  default_ajax_return 配置的输出类型。
+
+		可以修改配置文件，更改默认输出类型
+			'default_return_type' => 'json',
+
+
+
+	手动输出
+		在必要的时候，可以手动控制输出和类型和参数，这种方式较为灵活：
+		<?php 
+		namespace app\index\controller;
+
+		class Index
+		{
+			public function hello()
+			{
+				$data = ['name' => 'thinkphp', 'status' => '1'];
+				return json($data);
+			}
+		}
+
+		默认情况下发送的http状态码是 200 ，如果需要返回其他的状态码，可以使用：
+		<?php
+		namespace app\index\controller;
+
+		class Index
+		{
+			public function hello()
+			{
+				$data = ['name' => 'thinkphp', 'status' => '1'];
+				return json($data, 201);
+			}
+		}
+
+		或者发送更多的响应头信息：
+		<?php
+		namespace app\index\controller;
+
+		class Index
+		{
+		    public function hello()
+		    {
+		        $data = ['name' => 'thinkphp', 'status' => '1'];
+		        return json($data, 201, ['Cache-control' => 'no-cache,must-revalidate']);
+		    }
+		}
+
+		也支持使用下面方式：
+		<?php
+		namespace app\index\controller;
+
+		class Index
+		{
+		    public function hello()
+		    {
+		        $data = ['name' => 'thinkphp', 'status' => '1'];
+		        return json($data)->code(201)->header(['Cache-control' => 'no-cache,must-revalidate']);
+		    }
+		}
+
+
+		页面跳转
+
+			如果需要进行一些简单的页面操作后重定向，可以引入traits\controller\Jump，就可以使用相关页面跳转和重定向
+			方法，当页面传入name参数为thinkphp的时候，跳转欢迎页面，其它情况则跳转到一个guest页面。
+
+			<?php
+			namespace app\index\controller;
+
+			class Index
+			{
+				use \traits\controller\Jump;
+
+				public function index($name = '')
+				{
+					if ('thinkphp' == $name) {
+						$this->success('欢迎使用ThinkPHP5.0', 'hello');
+					} else {
+						$this->error('错误的name', 'guest');
+					}
+				}
+
+				public function hello()
+				{
+					return 'Hello,ThinkPHP!'; 
+				}
+
+				public function guest()
+				{
+					return 'Hello,Guest!'; 
+				}
+			}
+
+			这里引入了一个 Jump trait，这是 PHP5.4 版本的特性，如果控制器类是继承的\think\Controller 的话，系统已经自动
+			引入\traits\controller\Jump，无需再次引入。
+
+
+
+			页面重定向
+			<?php
+			namespace app\index\controller;
+
+			class Index
+			{
+				use \traits\controller\Jump;
+
+				public function index($name = '')
+				{
+					if ('thinkphp' == $name) {
+						$this->redirect('http://thinkphp.cn');
+					} else {
+						$this->success('欢迎使用ThinkPHP','hello');
+					}
+				}
+
+				public function hello()
+				{
+					return 'Hello,ThinkPHP!';
+				}
+			}
+
+			redirect 方法默认使用302跳转，如果不需要可以使用第二个参数进行301跳转。
+			$this->redirect('http://thinkphp.cn',301);
+
+			在任何时候（即使没有引入Jump trait的话），我们可以使用系统提供的助手函数redirect函数进行重定向。
+			<?php
+			namespace app\index\controller;
+
+			class Index
+			{
+				use \traits\controller\Jump;
+
+				public function index($name = '')
+				{
+					if ('thinkphp' == $name) {
+						return redirect('http://thinkphp.cn');
+					} else {
+						return 'Hello,ThinkPHP!'
+					}
+				}
+
+				public function hello()
+				{
+					return 'Hello,ThinkPHP!';
+				}
+			}
+			注意，使用 redirect 助手函数重定向的时候必须加上 return 返回才会生效。
+
