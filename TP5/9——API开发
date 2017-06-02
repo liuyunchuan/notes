@@ -1,0 +1,392 @@
+##########################################################################################
+
+API开发
+
+	使用 ThinkPHP5.0 可以更加简单的进行 API 开发，并且最大程度的满足 API 对性能的要求：
+
+API版本
+
+异常处理
+
+RESTFul
+
+REST请求测试
+	Postman
+	REST 请求
+
+API调试
+	环境安装
+	环境设置
+	应用配置
+	远程调试
+
+安全建议
+
+##########################################################################################
+
+API版本
+	
+	我们以一个用户信息读取的接口为例，包含两个版本 V1 和 V2 ，V2 版本的接口包括用户的档案信息，统一使用 json 格式
+	数据输出到客户端。
+
+	在 application 目录下面创建 api 模块目录，并创建 controller 和 model 子目录，因为 api 接口无需视图，所以不需要创建 view 目录。
+
+	api 版本号的传入方式很多，包括设置头信息、请求参数传入以及路由方式， 这里我们采用请求参数传入的方式，设置路由如下：
+		Route::rule(':version/user/:id','api/:version.User/read');
+
+	不同版本的 URL 访问地址为：
+	http://tp5.com/v1/user/10
+	http://tp5.com/v2/user/10
+
+	版本号中不能包含"."符号。
+
+	v1 版本控制器（类文件位置为 application/api/controller/v1/User.php)代码如下：
+	namespace app\api\controller\v1;
+
+	use app\api\model\User as UserModel;
+
+	class User
+	{
+		// 获取用户信息
+		public function read($id = 0)
+		{
+			$user = UserModel::get($id);
+			if ($user) {
+				return json($user);
+			} else {
+				return json(['error' => '用户不才存在'], 404);
+			}
+		}
+	}
+
+	v2 版本的控制器（类文件职位为 applicatiaon/api/controller/v2/User.php）代码如下：
+	namespace app\api\controller\v2;
+
+	use app\api\model\User as UserModel;
+
+	class User
+	{
+		// 获取用户信息
+	    public function read($id = 0)
+	    {
+	        $user = UserModel::get($id, 'profile');
+	        if ($user) {
+	            return json($user);
+	        } else {
+	            return json(['error' => '用户不存在'], 404);
+	        }
+	    }
+	}
+
+	v2 版本和 v1 版本的接口区别在于 v2 的接口用户信息包含了用户的关联档案信息。
+
+	除了使用 json 格式返回客户端之外，系统还支持 xml、jsonp格式，只需要把上面的 json 函数更改为 xml 和 jsonp 即可。
+
+
+	User 模代码如下：
+	namespace app\api\model;
+
+	use think\Model;
+
+	class User extends Model
+	{
+		// 定义一对一关联
+		public function prolie()
+		{
+			return $this->hasnoe('Profile');
+		}
+	}
+
+	Profile 模型代码：
+	namespace app\api\model;
+
+	use think\Model;
+
+	class Profile extends Model
+	{
+		protected $type = [
+			'birthdy' => 'timestamp:Y-m-d',
+		];
+	}
+
+
+##########################################################################################
+
+异常处理
+
+	当发生异常的时候，通常我们返回你会不同的 HTTP 状态码来标识，控制器的 read 方法中当请求的用户不存在的时候， 
+	系统发送 404 状态码来表示用户数据不存在，代码为：
+		return json(['error' => '用户不存在'],404);
+
+	客户端通常直接通过HTTP状态码来判断接口请求的成功与否而自行进行自定义错误提示，一般 400 以上的状态码都表示请求失败，
+	接口的代码还可以简化成：
+		// 获取用户信息
+	    public function read($id = 0)
+	    {
+	        $user = UserModel::get($id, 'profile');
+	        if ($user) {
+	            return json($user);
+	        } else {
+	            // 抛出HTTP异常 并发送404状态码
+	            abort(404);
+	        }
+	    }
+
+	如果你希望有API后台处理异常，并且直接接管系统的所有异常信息输出json错误信息，可以自定义一个异常处理类位于(application/api/exception/Http.php)：
+		namespace app\api\exception;
+
+		use think\exception\Handle;
+		use think\exception\HttpException;
+
+		class Http extends Handle
+		{
+
+		    public function render(\Exception $e)
+		    {
+		        if ($e instanceof HttpException) {
+		            $statusCode = $e->getStatusCode();
+		        }
+
+		        if (!isset($statusCode)) {
+		            $statusCode = 500;
+		        }
+
+		        $result = [
+		            'code' => $statusCode,
+		            'msg'  => $e->getMessage(),
+		            'time' => $_SERVER['REQUEST_TIME'],
+		        ];
+		        return json($result, $statusCode);
+		    }
+
+		}
+
+	然后，在应用配置文件中修改异常处理handle参数为自定义的异常类：
+		'exception_handle' => '\app\api\exception\Http',
+
+	接管 HTTP 异常处理之后，我们可以直接在方法中抛出任何的 HTTP 异常，系统自动处理为 json 格式输出到客户端：
+	   // 获取用户信息
+	    public function read($id = 0)
+	    {
+
+	        $user = UserModel::get($id, 'profile');
+	        if ($user) {
+	            return json($user);
+	        } else {
+	            // 抛出HTTP异常 并发送404状态码
+	            abort(404,'用户不存在');
+	        }
+	    }
+
+	当我们请求一个不存在的用户的时候，会提示404 错误。
+
+
+	如果希望捕获系统的任何异常转发，可以使用 try catch 如下：
+	 	// 获取用户信息
+	    public function read($id = 0)
+	    {
+	        try {
+	            // 制造一个方法不存在的异常
+	            $user = UserModel::geet($id, 'profile');
+	            if ($user) {
+	                return json($user);
+	            } else {
+	                return abort(404, '用户不存在');
+	            }
+	        } catch (\Exception $e) {
+	            // 捕获异常并转发为HTTP异常
+	            return abort(404, $e->getMessage());
+	        }
+	    }
+
+############################################################################################################
+
+RESTFul
+	
+	REST（Representational State Transsfer 表述性状态转移)是一种针对网络应用的设计和开发方式，可以减低开发的复杂性， 
+	提到系统的可伸缩性，REST 提出了一些设计概念和准则：
+
+	1、网络上的所有事物都被抽象为资源(resource)；
+	2、每个资源对应一个唯一的资源标识（resource identifier）；
+	3、通过通用的连接器接口（generic connector interface）对资源进行操作；
+	4、对资源的各种操作不会改变资源标识；
+	5、所有的操作都是无状态的（stateless）。
+
+	REST 通常基于使用 HTTP 、URI、和 JSON 以及 HTML 这些现有的广泛流行的协议和标准。
+
+	传统的请求模式和 REST 模式请求区别：
+	作用				传统模式 				REST模式
+	列举出所有的用户 	GET /users/list			GET /Users
+	列出ID为1的用户信息	GET /users/show/id/1 	GET /users/1
+	插入一个新的用户	POST /users/add 		POST /users
+	更新ID为1的用户信息 POST /users/update/id/1 PUT/users/1
+	删除ID为1的用户		POST /users/delete/id/1 DELETE /users/1
+
+
+	为了支持 RESTFul 请求的路由规则，只需要在路由配置文件中添加下面的代码：
+		Route::resource('blogs','index/blog');
+
+	该方法注册了一个名为 blogs 的资源路由，其实内部会自动注册7个路由规则，包括
+	标识	请求类型	生成路由规则	对应操作方法（默认）	描述
+	index	GET 		blogs			index					显示博客列表
+	create	GET 		blogs/create	create					新增博客页面
+	save	POST 		blogs			save					保存博客内容
+	read	GET 		blogs/:id		read					查看博客内容
+	edit	GET 		blogs/:id/edit	edit					编辑博客页面
+	update	PUT 		blogs/:id		update					更新博客内容
+	delete	DELETE 		blogs/:id		delete					删除博客
+
+	创建Blog模型如下：
+	<?php
+	namespace app\index\model;
+
+	use think\Model;
+
+	class Blog extends Model
+	{
+		protected $autoWriteTimestamp = true;
+		protected $insert			  = [
+			'status' => 1,
+		];
+
+		protected $field =[
+			'id'		 => 'int',
+			'creta_time' => 'int',
+			'update_time'=> 'int',
+			'name','title','content',
+		];
+	}
+
+	为了快速生成控制器类，我们进入命令行，切换到应用跟目录，执行下面的指令：
+		php think make:controller index/Bolog
+
+	会自动生成一个 Blog 资源控制类，并且会自动生成如前所描述的资源路由对应的7个（空白）方法，我们给每个方法添加一些简单的代码，
+	并去掉 create 和 edit 两个方法（对于 api 开发而言可以不需要）。
+
+	<?php
+	namespace app\index\model;
+
+	use think\Model;
+
+	class Blog extends Model
+	{
+	    protected $autoWriteTimestamp = true;
+	    protected $insert             = [
+	        'status' => 1,
+	    ];
+
+	    protected $field = [
+	        'id'          => 'int',
+	        'create_time' => 'int',
+	        'update_time' => 'int',
+	        'name', 'title', 'content',
+	    ];
+	}
+	为了快速生成控制器类，我们进入命令行，切换到应用根目录下面，执行下面的指令：
+
+	php think make:controller index/Blog
+	会自动生成一个Blog资源控制器类，并且会自动生成如前所述的资源路由对应的7个（空白）方法，我们给每个方法添加一些简单的代码，并去掉了create和edit两个方法（对于api开发而言可以不需要），最终控制器代码如下：
+
+	<?php
+
+	namespace app\index\controller;
+
+	use app\index\model\Blog as Blogs;
+	use think\Controller;
+	use think\Request;
+
+	class Blog extends Controller
+	{
+	    /**
+	     * 显示资源列表
+	     *
+	     * @return \think\Response
+	     */
+	    public function index()
+	    {
+	        $list = Blogs::all();
+	        return json($list);
+	    }
+
+	    /**
+	     * 保存新建的资源
+	     *
+	     * @param  \think\Request  $request
+	     * @return \think\Response
+	     */
+	    public function save(Request $request)
+	    {
+	        $data   = $request->param();
+	        $result = Blogs::create($data);
+	        return json($result);
+	    }
+
+	    /**
+	     * 显示指定的资源
+	     *
+	     * @param  int  $id
+	     * @return \think\Response
+	     */
+	    public function read($id)
+	    {
+	        $data = Blogs::get($id);
+	        return json($data);
+	    }
+
+	    /**
+	     * 保存更新的资源
+	     *
+	     * @param  \think\Request  $request
+	     * @param  int  $id
+	     * @return \think\Response
+	     */
+	    public function update(Request $request, $id)
+	    {
+	        $data   = $request->param();
+	        $result = Blogs::update($data, ['id' => $id]);
+	        return json($result);
+	    }
+
+	    /**
+	     * 删除指定资源
+	     *
+	     * @param  int  $id
+	     * @return \think\Response
+	     */
+	    public function delete($id)
+	    {
+	        $result = Blogs::destroy($id);
+	        return json($result);
+	    }
+	}
+
+	作为学习用途，Blog接口没有添加数据验证，大家可以结合之前学习的模型验证功能自己添加。
+
+	由于 API 开发没有实际的页面显示，加上 REST 请求类型复杂，我们需要通过特殊的方式才能在开发过程中进行 REST
+	请求的测试。
+
+########################################################################################################################
+
+REST 请求测试
+
+	Postman
+	最方便的方法就是通过 Postman 来测试接口，给 Chrome 浏览器安装一个 postman 扩展。
+
+
+
+REST 请求伪装
+
+	除了使用 Postman 之外，可以通过一个 post 表单来伪装 REST 的请求类型。首先创建一个普通的 post 表单，把请求参数都作为表单
+	的项目，并且在表单最后添加一个隐藏的 _method ：
+	<form method="post" class="form" action="/blogs/1">
+	<input type="sublimt" class="btn" value="删除">
+	<input type="hidden" name="_method" value="DELETE" />
+	</form>
+
+##########################################################################################################################
+
+API 调试
+
+	可以使用 ThinkPHP5.0 的 Trace 调试中 Socket 调试功能来解决 API 开发的问题。
+
+环境安装

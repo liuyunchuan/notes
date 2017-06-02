@@ -1,0 +1,25 @@
+##########################################################################################
+模型和关联
+	ThinkPHP5.0的模型是一种对象-关系映射（Object/Relation Mapping，简称ORM）的封装，并且提供了简洁的ActiveRecord实现，
+	一般来说，每个数据表和一个“模型”对应。
+
+		ORM 的基本特性就是表映射到模型，记录映射到模型对象实例，字段映射到对象属性。模型是一种对象化的封装，而不是简单
+	的 CURD 操作，简单的 CURD 操作直接使用签名提过的 Db 类即可。
+
+		模型类和 Db 类的区别主要在于对象业务逻辑的封装，Db 类的查询默认返回是数值（或者集合），而模型类返回的是当前的
+	模型对象实例（或者集合），模型是比 Db 类更高级的数据封装，支持模型关联、模型事件和业务（逻辑）方法。
+
+	为了演示需要，我们是事先添加一些路由定义如下：
+	return [
+		// 全局变量规则定义
+	    '__pattern__'         => [
+	        'id'    => '\d+',
+	    ],
+	    'user/index'      => 'index/user/index',
+	    'user/create'     => 'index/user/create',
+	    'user/add'        => 'index/user/add',
+	    'user/add_list'   => 'index/user/addList',    
+	    'user/update/:id' => 'index/user/update',
+	    'user/delete/:id' => 'index/user/delete',
+	    'user/:id'        => 'index/user/read',_'
+	]

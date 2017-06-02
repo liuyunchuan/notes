@@ -1,0 +1,314 @@
+########################################################################################################
+数据库
+
+准备
+数据库配置
+原生查询
+	创建（create）
+	更新（update）
+	读取（read）
+	删除（delete）
+	其他操作
+	切换数据库
+	参数绑定
+
+查询构造器
+链式操作
+事务支持
+
+###########################################################################################################
+准备
+	5.0的数据查询由低到高有三个层次：
+	1.数据原生查询（SQL查询）；
+	2.数据库链式查询（查询构造器）；
+	3.模型的对象化查询；
+
+	在第一章已经提到，在使用Db类进行数据库查询之前，首先必须先创建一个控制器类，以及一个操作方法用于测试：
+	<?php
+	namespace app\index\controller;
+
+	use think\Db;
+
+	class Index
+	{
+		public function index()
+		{
+			// 后面的数据查询代码都放在这个位置
+		}
+	}
+#############################################################################################################
+数据库配置
+
+	我们给应用定义数据库配置文件（application/database.php），里面设置了全局数据库配置信息。
+	数据库配置文件基本定义如下：
+	return [
+	    // 数据库类型
+	    'type'        => 'mysql',
+	    // 服务器地址
+	    'hostname'    => '127.0.0.1',
+	    // 数据库名
+	    'database'    => 'test',
+	    // 数据库用户名
+	    'username'    => 'root',
+	    // 数据库密码
+	    'password'    => '',
+	    // 数据库连接端口
+	    'hostport'    => '',
+	    // 数据库连接参数
+	    'params'      => [],
+	    // 数据库编码默认采用utf8
+	    'charset'     => 'utf8',
+	    // 数据库表前缀
+	    'prefix'      => '',
+	    // 数据库调试模式
+	    'debug'       => true,
+	];
+
+	如果使用了多个模块，并且不同的模块采用不同的数据库连接，那么可以在每个模块的目录下面单独定义数据库配置。
+
+	后面的例子，我们采用 index 模块的数据库配置文件（application/index/database.php），配置如下（模块数据库配置
+	中我们使用了长连接）：
+	return [
+	    // 数据库名
+	    'database'    => 'demo',
+	    // 数据库表前缀
+	    'prefix'      => 'think_',
+	    // 数据库连接参数
+	    'params' => [
+	        // 使用长连接
+	        \PDO::ATTR_PERSISTENT => true,
+	    ],    
+	];
+
+	提示：模块的数据库配置文件中只需要配置和全局数据库配置文件差异的部分，相同部分不需要重复配置。
+	也可以在调用 DB 类的时候，使用connect 方法动态连接或者切换不同的数据库。
+
+#####################################################################################################################
+原生查询
+
+	设置好数据库连接信息后，我们就可以进行原生的SQL查询了，包括 query 和 execute 两个方法，分别用于查询操作和写操作：
+
+	create
+		// 插入记录
+		$result = Db::execute('insert into think_data ( id , name , status ) values ( 5, 'thinkphp" , 1 )')';
+	update
+		// 更新数据
+		$result = Db::execute('update think_data set name = "frameWork" where id = 5 ');
+	read
+		// 查询数据
+		$result = Db::query('select * from think_data where id = 5');
+	delete
+		// 删除数据
+		$result = Db:execute('delete from think_data where id = 5 ');
+
+		// 显示数据库列表
+		$result = Db::query('show tables from demo');
+
+		// 清空数据表
+		$result = Db::execute('TRUNCATE table think_data');
+
+###########################################################################################
+切换数据库
+	在进行数据库查询的时候，支持切换数据库进行查询。
+	$result = Db::connect([
+	    // 数据库类型
+	    'type'     => 'mysql',
+	    // 服务器地址
+	    'hostname' => '127.0.0.1',
+	    // 数据库名
+	    'database' => 'thinkphp',
+	    // 数据库用户名
+	    'username' => 'root',
+	    // 数据库密码
+	    'password' => '123456',
+	    // 数据库连接端口
+	    'hostport' => '',
+	    // 数据库连接参数
+	    'params'   => [],
+	    // 数据库编码默认采用utf8
+	    'charset'  => 'utf8',
+	    // 数据库表前缀
+	    'prefix'   => 'think_',
+	])->query('select * from think_data');
+
+	或者采用字符串方式定义（字符串方式无法定义数据表前缀和连接参数），
+	$result = Db::connect('mysql://root:123456@127.0.0.1:3306/thinkphp#utf8')->query('select * from think_data where id = 1');
+
+	为了简化代码，通常的做法是事先在配置文件找定义好多个数据库的连接配置：
+
+	// 数据库配置1
+	'db1'   =>  [
+	    // 数据库类型
+	    'type'     => 'mysql',
+	    // 服务器地址
+	    'hostname' => '127.0.0.1',
+	    // 数据库名
+	    'database' => 'thinkphp',
+	    // 数据库用户名
+	    'username' => 'root',
+	    // 数据库密码
+	    'password' => '123456',
+	    // 数据库连接端口
+	    'hostport' => '',
+	    // 数据库连接参数
+	    'params'   => [],
+	    // 数据库编码默认采用utf8
+	    'charset'  => 'utf8',
+	    // 数据库表前缀
+	    'prefix'   => 'think_',
+	],
+	// 数据库配置2
+	'db2'   =>  [
+	    // 数据库类型
+	    'type'     => 'mysql',
+	    // 服务器地址
+	    'hostname' => '127.0.0.1',
+	    // 数据库名
+	    'database' => 'test',
+	    // 数据库用户名
+	    'username' => 'root',
+	    // 数据库密码
+	    'password' => '',
+	    // 数据库连接端口
+	    'hostport' => '',
+	    // 数据库连接参数
+	    'params'   => [],
+	    // 数据库编码默认采用utf8
+	    'charset'  => 'utf8',
+	    // 数据库表前缀
+	    'prefix'   => 'test_',
+	],
+
+	然后就可以直接在 connect 方法中传入配置参数进行切换数据库连接：
+	$result = Db::connect('db1')->query('select * from think_data where id = 1');
+	$result = Db::connect('db2')->query('select * from think_data where id = 1');
+
+	connect 方法中的配置参数需要完整定义，并且仅仅对当前查询有效，下次调用 Db 类是时候还是使用
+	默认的数据库连接。如果需要多次切换数据库查询，可以使用:
+	$db1 = Db::connect('db1');
+	$db2 = Db::connect('db2');
+	$db1->query('select * from think_data where id = 1');
+	$db2->query('select * from think_data where id = 1');
+
+#######################################################################################################
+参数绑定
+	实际开发中，可能某些数据使用外部传入的变量，为了让查询操作更加安全，我们建议使用参数绑定机制：
+	Db::execute('insert into think_data ( id , name , status ) values (?,?,?)'[8,'thinkphp',1]);
+	$result = Db::query('select * from think_data where id = ?',[8]);
+
+	也支持命名占位符绑定：
+	Db::execute('insert into think_data (id, name , status) values (:id, :name, :status)', ['id' => 10, 'name' => 'thinkphp', 'status' => 1]);
+	$result = Db::query('select * from think_data where id=:id', ['id' => 10]);
+
+
+########################################################################################################
+查询构造器
+	除了原生查询外，5.0还提供了数据库查询构造器，可以更方便执行数据操作，查询构造器基于PDO实现，对不同的数据库驱动都
+	是统一的语法。
+
+	注意：ThinkPHP5.0查询构造器使用 PDO 参数绑定，以保护应用程序避免 SQL 注入，因此传入的参数不需要额外转义特殊字符。
+	同样的实现上面的功能，我们可以改成：
+
+	// 插入记录
+	Db::table('think_data')
+	    ->insert(['id' => 18, 'name' => 'thinkphp', 'status' => 1]);
+
+	// 更新记录
+	Db::table('think_data')
+	    ->where('id', 18)
+	    ->update(['name' => "hello"]);
+
+	// 查询数据
+	$list = Db::table('think_data')
+	    ->where('id', 18)
+	    ->select();
+
+	// 删除数据
+	Db::table('think_data')
+	    ->where('id', 18)
+	    ->delete();
+
+	由于我们在数据库配置文件中设置了数据表的前缀为think_，因此，table方法可以改成name方法，这样就不会因为数据表前缀的修改而改动CURD代码，例如：
+
+		// 插入记录
+		Db::name('data')
+		    ->insert(['id' => 18, 'name' => 'thinkphp']);
+
+		// 更新记录
+		Db::name('data')
+		    ->where('id', 18)
+		    ->update(['name' => "framework"]);
+
+		// 查询数据
+		$list = Db::name('data')
+		    ->where('id', 18)
+		    ->select();
+		dump($list);
+
+		// 删除数据
+		Db::name('data')
+		    ->where('id', 18)
+		    ->delete();
+
+	如果使用系统提供的助手函数 db 则可以进一步简化查询代码如下：
+		$db = db('data');
+		// 插入记录
+		$db->insert(['id' => 20, 'name' => 'thinkphp']);
+
+		// 更新记录
+		$db->where('id', 20)->update(['name' => "framework"]);
+
+		// 查询数据
+		$list = $db->where('id', 20)->select();
+		dump($list);
+
+		// 删除数据
+		$db->where('id', 20)->delete();
+
+	db 助手函数默认可以会每次重新连接数据库，因此应当尽量避免多次调
+
+##############################################################################################################
+链式操作
+
+	使用链式操作可以完成复杂的数据库查询操作:
+	// 查询十个满足条件的数据，并按照id倒序排列
+	$list = Db::name('data')
+		->where('status',1)
+		->field('id','name')
+		->order('id','desc')
+		->limit(10)
+		->select();
+
+	链式操作不分先后，只要在查询方法之前调用就行。
+
+######################################################################################################
+事务支持
+	
+	由于需要用到事务的功能，请先修改数据表的类型为 InnoDB ，而不是 MyISAM。
+
+	对于事务的支持，最简单的方法就是使用 transaction 方法，只需要把需要执行的事务操作封装到闭包里面即可自动完成事务：
+		Db::transaction(function () {
+		    Db::table('think_user')
+		        ->delete(1);
+		    Db::table('think_data')
+		        ->insert(['id' => 28, 'name' => 'thinkphp', 'status' => 1]);
+		});
+
+	一旦 think_data 表写入失败的话，系统就会自动提交当前事务，也可以手动控制事务的提交：
+		// 启动事务
+		Db::startTrans();
+		try {
+		    Db::table('think_user')
+		        ->delete(1);
+		    Db::table('think_data')
+		        ->insert(['id' => 28, 'name' => 'thinkphp', 'status' => 1]);
+		    // 提交事务
+		    Db::commit();
+		} catch (\Exception $e) {
+		    // 回滚事务
+		    Db::rollback();
+		}
+
+	注意：
+		事务操作只对事务的数据结构库，并且设置了数据表为事务类型才有效，在MySQL数据库找请设置表类型为　InnoDB。
+		并且事务操作必须使用同一个数据库连接。

@@ -1,0 +1,276 @@
+##########################################################################################
+视图和模板
+	
+	前面只是在控制器方法里面直接输出而没有使用视图模板功能，从现在开始来了解如何把变量赋值到模板，并渲染输出：
+模板输出
+分页输出
+公共模板
+模板定位
+模板布局
+标签定制
+输出替换
+渲染内容
+助手函数
+
+##########################################################################################
+模板输出
+	<?php 
+	namespace app\index\controller;
+
+	use app\index\model\User as UserModel;
+	use think\Controller;
+
+	class User extends Controller
+	{
+		// 获取用户数据列表并输出
+		public function index()
+		{
+			$list = UserModel::all();
+			$this->assign('list',$list);
+			$this->assign('count',count($list));
+			return $this->fetch();
+		}
+	}
+
+	这里的 User 控制器和之前模板章节有所不同，继承了 \think\Controller 类，该类对视图类的方法进行了封装，
+	所以可以在无需实例化视图类的情况下，直接调用视图类的相关方法：
+	方法		描述
+	assign		模板变量赋值
+	fetch 		渲染模板文件
+	display 	渲染内容
+	engine		初始化模板引擎
+
+	assign 方法可以把任何类型的变量赋值给模板，关键在于模板中如何输出，不同的变量类型需要采用不同的标签输出。
+	前面我们已经学习过，fetch 方法默认渲染输出的模板文件应该是当前控制器和操作对应的模板。
+
+	接下来，定义视图文件的内容，采用 volist 标签输出数据集：
+		<h2>用户列表（{$count}）</h2> 
+		{volist name="list" id="user"}
+		<div>
+			昵称：{$user.nickname}<br/>
+			邮箱：{$user.email}<br/>
+			生日：{$user.birthday}<br/>
+		</div>
+		{/volist}
+
+	ThinkPHP5.0 默认使用的是一个内置的编译模板引擎，包含了一系列的模板标签。
+
+
+##########################################################################################
+
+分页输出
+
+	可以简单的输出用户的分页数据，控制器 index 方法修改为：
+
+	// 获取用户数据列表
+	public function index()
+	{
+		// 分页输出列表，每页显示3条数据
+		$list = UserModel::paginate(3);
+		$this->assign('list',$list);
+		return $this->fetch();
+	}
+
+	模板文件修改为：
+		<link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css" />
+		<h2>用户列表（{$list->total()}）</h2> 
+		{volist name="list" id="user"}
+			ID：{$user.id}<br/>
+			昵称：{$user.nickname}<br/>
+			邮箱：{$user.email}<br/>
+			生日：{$user.birthday}<br/>
+			------------------------<br/>
+		{/volist}
+		{$list->render()}
+	注意由于演示需要，在模板中引入了 bootstrap 样式文件。
+
+
+##########################################################################################
+
+公共模板
+	
+	加上之前定义创建用户的模板，已经有了两个模板文件了，为了避免重复定义这些模板，可以把模板的公共
+头部和尾部分离出来，便于维护。
+	我们把模板文件拆分为三部分：
+	application/index/view/header.html
+	application/index/view/index.html
+	application/idnex/view/footer.html
+
+		{include file="user/header" /}
+		<h2>用户列表（{$count}）</h2> 
+		{volist name="list" id="user" }
+		<div class="info">
+			ID：{$user.id}<br/>
+			昵称：{$user.nickname}<br/>
+			邮箱：{$user.email}<br/>
+			生日：{$user.birthday}<br/>
+		</div>
+		{/volist}
+		{include file="user/footer" /}
+	公共头部模板文件中可能存在一些变量，例如页面标题不同的页面也会有不同，可以使用：
+		{include file="user/header" title="查看用户列表" /}
+		然后把头部模板文件中标题部分改为 <title>[title]</title>
+
+		如果需要传递多个变量，则使用多个属性即可：
+		{include file="user/header" title="查看用户列表" keywords="thinkphp" /}
+
+		也可以支持传递动态变量的方式：
+		{include file="user/header" title="$title" /}
+
+##########################################################################################
+
+模板定位
+
+	fetch 方法的第一个参数表示渲染的模板文件或者模板表达式。
+	通常我们都是使员工模板表达式，而不需要使用完整的文件名。
+	模板文件可以随意命名。
+
+	有一些和模板定位相关的设置参数能够帮助你调整模板文件的位置和名称。
+	通常来说，模板相关的参数可以直接在配置文件中配置 template 参数，默认的配置如下：
+		'template'              => [
+		    // 模板引擎类型 支持 php think 支持扩展
+		    'type'         => 'Think',
+		    // 模板路径
+		    'view_path'    => '',
+		    // 模板后缀
+		    'view_suffix'  => '.html',
+		    // 模板文件名分隔符
+		    'view_depr'    => DS,
+		    // 模板引擎普通标签开始标记
+		    'tpl_begin'    => '{',
+		    // 模板引擎普通标签结束标记
+		    'tpl_end'      => '}',
+		    // 标签库标签开始标记
+		    'taglib_begin' => '{',
+		    // 标签库标签结束标记
+		    'taglib_end'   => '}',
+		],
+	view_path 参数决定了你的模板文件的根目录，如果没有设置的话系统会默认使用当前模块的视图目录 view。
+	如果希望自定义模板文件的位置、命名和后缀，可以对模板参数稍加修改如下:
+		'template'              => [
+		    // 模板引擎类型 支持 php think 支持扩展
+		    'type'         => 'Think',
+		    // 模板路径
+		    'view_path'    => '../template/index/',
+		    // 模板后缀
+		    'view_suffix'  => '.tpl',
+		    // 模板文件名分隔符
+		    'view_depr'    => '_',
+		],
+
+##########################################################################################
+
+模板布局
+
+	现在使用模板布局来进一步简化模板定义。
+
+	首先需要定义一个布局模板文件，放到 application/index/view/layout.html 内容如下：
+	{include file="user/header" /}
+	{__CONTENT__}
+	{include file="user/footer" /}
+
+	{layout name="layout" /}
+	<h2>用户列表（{$count}）</h2> 
+	{volist name="list" id="user" }
+	<div class="info">
+	ID：{$user.id}<br/>
+	昵称：{$user.nickname}<br/>
+	邮箱：{$user.email}<br/>
+	生日：{$user.birthday}<br/>
+	</div>
+	{/volist}
+
+	在 index 模板文件中开头定义 layout 标签，表示当前模板使用了布局，布局模板文件为 layout.html，布局模板中{__CONTENT__}
+	会自动替换为解析后的index.html内容。
+
+	如果你的布局模板中不是用 {__CONTENT__}的话，可以改成：
+	{layout name='layout/newlayout' replace="[__REOLACE__]" / }
+	那么自动读取模板文件
+	{include file="user/header" /}
+	[__REPLACE__]
+	{include file="user/footer"}
+
+
+
+
+##########################################################################################
+
+标签定制
+
+	可以设置模板标签的定界符：
+	'template'              => [
+	    // 模板引擎类型 支持 php think 支持扩展
+	    'type'         => 'Think',
+	    // 模板路径
+	    'view_path'    => '../template/index/',
+	    // 模板后缀
+	    'view_suffix'  => '.tpl',
+	    // 模板文件名分隔符
+	    'view_depr'    => '_',
+	    // 模板引擎普通标签开始标记
+	    'tpl_begin'    => '{',
+	    // 模板引擎普通标签结束标记
+	    'tpl_end'      => '}',
+	    // 标签库标签开始标记
+	    'taglib_begin' => '<',
+	    // 标签库标签结束标记
+	    'taglib_end'   => '>',
+	],
+	并且修改 index.html 模板中的标签修改如下：
+		<h2>用户列表（{$count}）</h2> 
+		<div class="info">
+		<volist name="list" id="user" >
+		ID：{$user.id}<br/>
+		昵称：{$user.nickname}<br/>
+		邮箱：{$user.email}<br/>
+		生日：{$user.birthday}<br/>
+		</volist>
+		</div>
+
+
+##########################################################################################
+
+输出替换
+
+	为了更加清晰，需要把资源文件独立出来，并在模板文件中引入，例如增加 public/static/common.css 文件：
+
+	我们在 header.html 文件中引入资源文件。
+	<link charset="utf-8" rel="stylesheet" href="/static/common.css">
+
+	但这样有一个问题 ，如果部署的目录变化的话，资源文件的路径就会跟着变化，这里我们采用输出替换功能，是的资源文件的引入动态化。
+
+	可以在输出之前对解析后的内容进行替换：
+		// 读取用户数据
+		public function read($id='')
+		{
+		    $user = UserModel::get($id);
+		    $this->assign('user',$user);
+		    $this->view->replace([
+		        '__PUBLIC__'    =>  '/static',
+		    ]);
+		    return $this->fetch();
+		}
+	模板文件改为：
+		<html>
+		<head>
+		<meta charset="UTF-8">
+		<title>[title]</title>
+		<link charset="utf-8" rel="stylesheet" href="__PUBLIC__/common.css">
+		</head>
+		<body>
+
+##########################################################################################
+
+渲染内容
+
+	有时候，并不需要模板文件，而是直接渲染内容或者读取数据库中存储的内容。
+
+	display 方法用于渲染内容而不是模板文件输出，和直接使用 echo  输出的区别是 dispaly 方法输出的内容支持模板标签的解析。
+
+
+
+##########################################################################################
+
+助手函数
+	
+	可以使用系统提供的助手函数 view 简化模板渲染输出（注意不使用于内容渲染输出）。
